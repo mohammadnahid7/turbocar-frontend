@@ -304,6 +304,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           print(displayCar);
 
           return CarListItem(
+            key: ValueKey(displayCar.id),
             car: displayCar,
             showSaveButton: true,
             onTap: () {

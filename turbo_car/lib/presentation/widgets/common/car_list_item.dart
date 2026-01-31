@@ -3,8 +3,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:turbo_car/presentation/widgets/common/custom_button.dart';
+import 'package:turbo_car/presentation/widgets/common/sequential_network_image.dart';
 import '../../../data/models/car_model.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/theme/app_colors.dart';
@@ -64,23 +64,11 @@ class _CarListItemState extends State<CarListItem>
                 ClipRRect(
                   borderRadius: const BorderRadius.all(Radius.circular(10)),
                   child: widget.car.images.isNotEmpty
-                      ? CachedNetworkImage(
+                      ? SequentialNetworkImage(
                           imageUrl: widget.car.images.first,
-                          cacheKey:
-                              widget.car.images.first, // Explicit cache key
                           width: 96,
                           height: 96,
                           fit: BoxFit.cover,
-                          fadeInDuration: const Duration(
-                            milliseconds: 0,
-                          ), // Instant show from cache
-                          fadeOutDuration: const Duration(
-                            milliseconds: 0,
-                          ), // No fade out
-                          memCacheHeight: 192, // 2x for better quality
-                          memCacheWidth: 192, // 2x for better quality
-                          maxHeightDiskCache: 400, // Limit disk cache size
-                          maxWidthDiskCache: 400,
                           placeholder: (context, url) => const SizedBox(
                             width: 96,
                             height: 96,

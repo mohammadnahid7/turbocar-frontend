@@ -2,6 +2,7 @@
 /// State management for car listings using Riverpod with caching support
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/car_model.dart';
 import '../repositories/car_repository.dart';
@@ -92,9 +93,28 @@ class CarListNotifier extends StateNotifier<CarListState> {
           response['hasMore'] as bool? ??
           false;
 
+      // Smart Diffing Logic
+      List<CarModel> finalCars;
+      if (refresh && state.cars.isNotEmpty) {
+        final oldCarMap = {for (var c in state.cars) c.id: c};
+        finalCars = cars.map((newCar) {
+          final oldCar = oldCarMap[newCar.id];
+          if (oldCar != null) {
+            // Check if content is chemically equal
+            // Note: We use toJson() for deep comparison since == is not overridden
+            if (mapEquals(oldCar.toJson(), newCar.toJson())) {
+              return oldCar; // Reuse existing instance to preserve image state
+            }
+          }
+          return newCar;
+        }).toList();
+      } else {
+        finalCars = refresh ? cars : [...state.cars, ...cars];
+      }
+
       state = state.copyWith(
         isLoading: false,
-        cars: refresh ? cars : [...state.cars, ...cars],
+        cars: finalCars,
         currentPage: refresh ? 1 : state.currentPage,
         hasMore: hasMore,
         filters: filters ?? state.filters,

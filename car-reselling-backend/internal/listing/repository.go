@@ -132,7 +132,7 @@ func (r *postgresRepository) FindAll(ctx context.Context, q ListCarsQuery) ([]Ca
 			   ST_Y(c.coordinates::geometry) as latitude,
 			   u.full_name as seller_name,
 			   u.profile_photo_url as seller_photo 
-	` + baseQuery + fmt.Sprintf(" ORDER BY %s LIMIT ? OFFSET ?", order)
+	` + baseQuery + fmt.Sprintf(" ORDER BY %s, c.id DESC LIMIT ? OFFSET ?", order)
 
 	args = append(args, q.Limit, offset)
 

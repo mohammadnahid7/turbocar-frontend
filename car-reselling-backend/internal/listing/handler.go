@@ -166,10 +166,11 @@ func (h *ListingHandler) ListListings(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"data":  cars,
-		"total": total,
-		"page":  query.Page,
-		"limit": query.Limit,
+		"data":     cars,
+		"total":    total,
+		"page":     query.Page,
+		"limit":    query.Limit,
+		"has_more": total > int64(query.Page*query.Limit),
 	})
 }
 
