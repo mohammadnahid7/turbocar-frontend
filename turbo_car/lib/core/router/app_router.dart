@@ -17,6 +17,7 @@ import '../../presentation/pages/profile/change_password_page.dart';
 import '../../presentation/pages/profile/contact_us_page.dart';
 import '../../presentation/pages/profile/about_us_page.dart';
 import '../../presentation/pages/profile/profile_settings_page.dart';
+import '../../presentation/pages/chat/chat_room_screen.dart';
 import 'auth_router_notifier.dart';
 import 'route_names.dart';
 
@@ -121,6 +122,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
           return ShowPostPage(carId: id);
+        },
+      ),
+      // Chat room route for individual conversations
+      GoRoute(
+        path: '/chat/:id',
+        name: 'chatRoom',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return ChatRoomScreen(conversationId: id);
         },
       ),
       GoRoute(

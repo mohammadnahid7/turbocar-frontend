@@ -218,7 +218,7 @@ class _ProfileSettingsPageState extends ConsumerState<ProfileSettingsPage> {
                   // Gender (Editable Dropdown)
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _gender,
+                      initialValue: _gender,
                       decoration: InputDecoration(
                         labelText: 'Gender',
                         border: OutlineInputBorder(

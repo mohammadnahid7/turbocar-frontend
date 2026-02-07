@@ -61,11 +61,12 @@ dependencies:
   url_launcher: ^6.2.0
 
   # Real-time Communication
-  socket_io_client: ^2.0.0
+  web_socket_channel: ^3.0.0
 
   # Notifications
   firebase_core: ^2.24.0
   firebase_messaging: ^14.7.0
+  flutter_local_notifications: ^17.0.0
 
   # Utilities
 

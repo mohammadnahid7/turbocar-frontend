@@ -106,7 +106,7 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
                   // City dropdown (dynamic from car list)
                   if (availableCities.isNotEmpty) ...[
                     DropdownButtonFormField<String>(
-                      value: filterState.city,
+                      initialValue: filterState.city,
                       decoration: InputDecoration(
                         labelText: StringConstants.city,
                       ),

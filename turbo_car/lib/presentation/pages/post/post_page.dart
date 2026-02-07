@@ -195,7 +195,7 @@ class _PostPageState extends ConsumerState<PostPage> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: postState.carName.isEmpty
+                      initialValue: postState.carName.isEmpty
                           ? null
                           : postState.carName,
                       decoration: InputDecoration(

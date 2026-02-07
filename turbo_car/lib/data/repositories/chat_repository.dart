@@ -1,38 +1,111 @@
 /// Chat Repository
-/// Handles chat-related operations
+/// Combines API and WebSocket functionality for chat
 library;
 
-import '../models/chat_model.dart';
-import '../services/api_service.dart';
+import '../models/conversation_model.dart';
+import '../models/message_model.dart';
+import '../services/chat_service.dart';
+import '../services/socket_service.dart';
 
 class ChatRepository {
-  final ApiService _apiService;
+  final ChatService _chatService;
+  final SocketService _socketService;
 
-  ChatRepository(this._apiService);
+  ChatRepository({
+    required ChatService chatService,
+    required SocketService socketService,
+  }) : _chatService = chatService,
+       _socketService = socketService;
 
-  // Fetch chats
-  Future<List<ChatModel>> fetchChats() async {
-    try {
-      return await _apiService.getChats();
-    } catch (e) {
-      rethrow;
-    }
+  // --- WebSocket ---
+
+  /// Connect to WebSocket server
+  Future<void> connectWebSocket(String serverUrl, String token) async {
+    await _socketService.connect(serverUrl, token);
   }
 
-  // Fetch messages with a user
-  Future<List<ChatModel>> fetchMessages(String userId) async {
-    try {
-      return await _apiService.getMessagesWithUser(userId);
-    } catch (e) {
-      rethrow;
-    }
+  /// Disconnect from WebSocket
+  void disconnectWebSocket() {
+    _socketService.disconnect();
   }
 
-  // Send message (placeholder - will be implemented with socket)
-  Future<void> sendMessage(String userId, String message) async {
-    // TODO: Implement with socket service
-    throw UnimplementedError(
-      'Send message will be implemented with socket service',
+  /// Stream of incoming messages
+  Stream<WSMessage> get messageStream => _socketService.messageStream;
+
+  /// Stream of connection state changes
+  Stream<SocketConnectionState> get connectionStateStream =>
+      _socketService.connectionStateStream;
+
+  /// Whether WebSocket is connected
+  bool get isConnected => _socketService.isConnected;
+
+  /// Send a message via WebSocket
+  void sendMessage(WSMessage message) {
+    _socketService.send(message);
+  }
+
+  /// Send a text message
+  void sendTextMessage(String conversationId, String content) {
+    _socketService.send(
+      WSMessage.text(conversationId: conversationId, content: content),
     );
+  }
+
+  /// Send typing indicator
+  void sendTypingIndicator(String conversationId) {
+    _socketService.send(WSMessage.typing(conversationId: conversationId));
+  }
+
+  /// Send read receipt
+  void sendReadReceipt(String conversationId, String messageId) {
+    _socketService.send(
+      WSMessage.readReceipt(
+        conversationId: conversationId,
+        messageId: messageId,
+      ),
+    );
+  }
+
+  // --- REST API ---
+
+  /// Get all conversations
+  Future<List<ConversationModel>> getConversations() {
+    return _chatService.getConversations();
+  }
+
+  /// Start or get existing conversation
+  Future<ConversationModel> startConversation(List<String> participantIds) {
+    return _chatService.startConversation(participantIds);
+  }
+
+  /// Get message history
+  Future<ChatHistoryResponse> getMessages(
+    String conversationId, {
+    int page = 1,
+    int pageSize = 50,
+  }) {
+    return _chatService.getMessages(
+      conversationId,
+      page: page,
+      pageSize: pageSize,
+    );
+  }
+
+  /// Register device for push notifications
+  Future<void> registerDevice(
+    String fcmToken, {
+    String deviceType = 'android',
+  }) {
+    return _chatService.registerDevice(fcmToken, deviceType: deviceType);
+  }
+
+  /// Unregister device from push notifications
+  Future<void> unregisterDevice(String fcmToken) {
+    return _chatService.unregisterDevice(fcmToken);
+  }
+
+  /// Dispose resources
+  void dispose() {
+    _socketService.dispose();
   }
 }
