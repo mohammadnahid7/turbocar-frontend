@@ -96,26 +96,24 @@ func main() {
 	r.Use(gin.Recovery())
 	r.Use(gin.Logger())
 
-	// CORS middleware
+	// CORS middleware - allow all origins for mobile apps
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:3000", "http://localhost:3000"} // Add your frontend/swagger origins here
+	config.AllowAllOrigins = true
 	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "Upgrade", "Connection"}
 	config.ExposeHeaders = []string{"Content-Length"}
-	config.AllowCredentials = true
-	config.AllowOriginFunc = func(origin string) bool {
-		return cfg.Environment == "development" // Allow all origins in development
-	}
+	config.AllowCredentials = false
 	r.Use(cors.New(config))
 
-	// Rate limiting (exclude Swagger UI and health check)
+	// Rate limiting (exclude Swagger UI, health check, and WebSocket)
 	r.Use(func(c *gin.Context) {
 		path := c.Request.URL.Path
-		// Skip rate limiting for Swagger UI and health check
+		// Skip rate limiting for Swagger UI, health check, and WebSocket
 		if path == "/health" ||
 			path == "/swagger" ||
 			path == "/swagger/" ||
-			(len(path) > 9 && path[:9] == "/swagger/") {
+			(len(path) > 9 && path[:9] == "/swagger/") ||
+			path == "/api/chat/ws" { // WebSocket endpoint excluded
 			c.Next()
 			return
 		}

@@ -99,6 +99,7 @@ func (h *Handler) HandleWebSocket(c *gin.Context) {
 // @Router /chat/conversations [get]
 func (h *Handler) GetConversations(c *gin.Context) {
 	userID := h.getUserID(c)
+	log.Println("Nahid: Conversations: ", userID)
 	if userID == uuid.Nil {
 		return
 	}
@@ -108,7 +109,6 @@ func (h *Handler) GetConversations(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get conversations"})
 		return
 	}
-
 	c.JSON(http.StatusOK, conversations)
 }
 
@@ -128,13 +128,19 @@ func (h *Handler) StartConversation(c *gin.Context) {
 
 	// Parse request body
 	var req StartConversationRequest
-	log.Println("Nahid: Request: ", req)
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Printf("Error binding JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	log.Println("Nahid Here?")
+
+	// DEBUG: Log received request data
+	log.Printf("DEBUG StartConversation - Request received:")
+	log.Printf("  ParticipantIDs: %v", req.ParticipantIDs)
+	log.Printf("  CarID: %v", req.CarID)
+	log.Printf("  CarTitle: %v", req.CarTitle)
+	log.Printf("  Context: %v", req.Context)
+
 	// Include the current user in participants
 	participantIDs := append(req.ParticipantIDs, userID)
 
@@ -144,6 +150,12 @@ func (h *Handler) StartConversation(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create conversation"})
 		return
 	}
+
+	// DEBUG: Log response data
+	log.Printf("DEBUG StartConversation - Response sent:")
+	log.Printf("  Conversation ID: %v", conversation.ID)
+	log.Printf("  CarID: %v", conversation.CarID)
+	log.Printf("  CarTitle: %v", conversation.CarTitle)
 
 	c.JSON(http.StatusCreated, conversation)
 }
@@ -158,6 +170,7 @@ func (h *Handler) StartConversation(c *gin.Context) {
 // @Success 200 {object} ChatHistoryResponse
 // @Router /chat/conversations/{id}/messages [get]
 func (h *Handler) GetMessages(c *gin.Context) {
+	// sdswqeqw
 	userID := h.getUserID(c)
 	if userID == uuid.Nil {
 		return

@@ -56,9 +56,11 @@ func (s *Service) GetUserConversations(userID uuid.UUID) ([]ConversationResponse
 	responses := make([]ConversationResponse, len(items))
 	for i, item := range items {
 		responses[i] = ConversationResponse{
-			ID:       item.ID,
-			CarID:    item.CarID,
-			CarTitle: item.CarTitle,
+			ID:          item.ID,
+			CarID:       item.CarID,
+			CarTitle:    item.CarTitle,
+			CarImageURL: derefString(item.CarImageURL),
+			CarPrice:    item.CarPrice,
 			Participants: []ParticipantResponse{
 				{
 					UserID:    item.OtherUserID,
@@ -91,6 +93,14 @@ func derefString(s *string) string {
 	return *s
 }
 
+// formatTimePtr safely formats a time pointer to RFC3339 string
+func formatTimePtr(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.Format(time.RFC3339)
+}
+
 // --- Message Operations ---
 
 // SaveMessage persists a WebSocket message to the database
@@ -107,7 +117,18 @@ func (s *Service) SaveMessage(wsMsg *WSMessage) error {
 		msg.MediaURL = &wsMsg.MediaURL
 	}
 
-	return s.repo.SaveMessage(msg)
+	// Save message to database
+	if err := s.repo.SaveMessage(msg); err != nil {
+		return err
+	}
+
+	// Increment unread count for other participants
+	if err := s.repo.IncrementUnreadCount(wsMsg.ConversationID, wsMsg.SenderID); err != nil {
+		log.Printf("Failed to increment unread count: %v", err)
+		// Don't fail the message send for this
+	}
+
+	return nil
 }
 
 // GetChatHistory retrieves paginated messages
@@ -132,6 +153,9 @@ func (s *Service) GetChatHistory(conversationID uuid.UUID, page, pageSize int) (
 			MessageType:    msg.MessageType,
 			MediaURL:       mediaURL,
 			IsRead:         msg.IsRead,
+			Status:         msg.Status,
+			DeliveredAt:    formatTimePtr(msg.DeliveredAt),
+			SeenAt:         formatTimePtr(msg.SeenAt),
 			CreatedAt:      msg.CreatedAt.Format(time.RFC3339),
 		}
 	}
@@ -199,4 +223,38 @@ func (s *Service) RegisterDevice(userID uuid.UUID, fcmToken, deviceType string) 
 // UnregisterDevice removes FCM token for a user
 func (s *Service) UnregisterDevice(userID uuid.UUID, fcmToken string) error {
 	return s.repo.DeleteUserDevice(userID, fcmToken)
+}
+
+// --- Message Status Operations ---
+
+// MarkMessageDelivered updates a message status to delivered
+func (s *Service) MarkMessageDelivered(messageID uuid.UUID) error {
+	now := time.Now()
+	return s.repo.UpdateMessageStatus(messageID, "delivered", &now)
+}
+
+// MarkConversationSeen marks all messages in a conversation as seen for a user and resets unread count
+func (s *Service) MarkConversationSeen(conversationID, userID uuid.UUID) (int64, error) {
+	// Mark all messages as seen
+	affected, err := s.repo.BulkUpdateMessagesSeen(conversationID, userID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Reset unread count for this user
+	if err := s.repo.ResetUnreadCount(conversationID, userID); err != nil {
+		log.Printf("Failed to reset unread count: %v", err)
+	}
+
+	return affected, nil
+}
+
+// GetTotalUnreadCount returns the sum of all unread counts for a user
+func (s *Service) GetTotalUnreadCount(userID uuid.UUID) (int64, error) {
+	return s.repo.GetTotalUnreadCount(userID)
+}
+
+// ResetUnreadCount resets the unread count for a specific conversation
+func (s *Service) ResetUnreadCount(conversationID, userID uuid.UUID) error {
+	return s.repo.ResetUnreadCount(conversationID, userID)
 }

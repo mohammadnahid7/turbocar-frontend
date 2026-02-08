@@ -14,6 +14,10 @@ class ConversationModel {
   final String? carId;
   @JsonKey(name: 'car_title')
   final String? carTitle;
+  @JsonKey(name: 'car_image_url')
+  final String? carImageUrl;
+  @JsonKey(name: 'car_price')
+  final double? carPrice;
   final List<ParticipantModel> participants;
   @JsonKey(name: 'last_message')
   final MessageModel? lastMessage;
@@ -30,6 +34,8 @@ class ConversationModel {
     required this.id,
     this.carId,
     this.carTitle,
+    this.carImageUrl,
+    this.carPrice,
     required this.participants,
     this.lastMessage,
     this.unreadCount = 0,
@@ -49,6 +55,35 @@ class ConversationModel {
     return participants.firstWhere(
       (p) => p.userId != currentUserId,
       orElse: () => participants.first,
+    );
+  }
+
+  /// Create a copy with updated fields
+  ConversationModel copyWith({
+    String? id,
+    String? carId,
+    String? carTitle,
+    String? carImageUrl,
+    double? carPrice,
+    List<ParticipantModel>? participants,
+    MessageModel? lastMessage,
+    int? unreadCount,
+    String? createdAt,
+    String? updatedAt,
+    Map<String, dynamic>? metadata,
+  }) {
+    return ConversationModel(
+      id: id ?? this.id,
+      carId: carId ?? this.carId,
+      carTitle: carTitle ?? this.carTitle,
+      carImageUrl: carImageUrl ?? this.carImageUrl,
+      carPrice: carPrice ?? this.carPrice,
+      participants: participants ?? this.participants,
+      lastMessage: lastMessage ?? this.lastMessage,
+      unreadCount: unreadCount ?? this.unreadCount,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      metadata: metadata ?? this.metadata,
     );
   }
 }

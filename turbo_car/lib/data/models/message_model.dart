@@ -22,6 +22,11 @@ class MessageModel {
   final String? mediaUrl;
   @JsonKey(name: 'is_read')
   final bool isRead;
+  final String status; // sent, delivered, seen
+  @JsonKey(name: 'delivered_at')
+  final String? deliveredAt;
+  @JsonKey(name: 'seen_at')
+  final String? seenAt;
   @JsonKey(name: 'created_at')
   final String createdAt;
 
@@ -34,6 +39,9 @@ class MessageModel {
     this.messageType = 'text',
     this.mediaUrl,
     this.isRead = false,
+    this.status = 'sent',
+    this.deliveredAt,
+    this.seenAt,
     required this.createdAt,
   });
 
@@ -47,12 +55,44 @@ class MessageModel {
 
   /// Check if this message is from the current user
   bool isFromMe(String currentUserId) => senderId == currentUserId;
+
+  /// Create a copy with updated fields
+  MessageModel copyWith({
+    String? id,
+    String? conversationId,
+    String? senderId,
+    String? senderName,
+    String? content,
+    String? messageType,
+    String? mediaUrl,
+    bool? isRead,
+    String? status,
+    String? deliveredAt,
+    String? seenAt,
+    String? createdAt,
+  }) {
+    return MessageModel(
+      id: id ?? this.id,
+      conversationId: conversationId ?? this.conversationId,
+      senderId: senderId ?? this.senderId,
+      senderName: senderName ?? this.senderName,
+      content: content ?? this.content,
+      messageType: messageType ?? this.messageType,
+      mediaUrl: mediaUrl ?? this.mediaUrl,
+      isRead: isRead ?? this.isRead,
+      status: status ?? this.status,
+      deliveredAt: deliveredAt ?? this.deliveredAt,
+      seenAt: seenAt ?? this.seenAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }
 
 /// WebSocket message for real-time communication
 @JsonSerializable()
 class WSMessage {
-  final String type; // message, typing, read_receipt
+  final String
+  type; // message, typing, read_receipt, message:delivered, messages:seen, unread:update, unread:get
   @JsonKey(name: 'conversation_id')
   final String conversationId;
   @JsonKey(name: 'sender_id')
@@ -107,5 +147,27 @@ class WSMessage {
       conversationId: conversationId,
       content: messageId,
     );
+  }
+
+  /// Confirm message delivery
+  factory WSMessage.delivered({
+    required String conversationId,
+    required String messageId,
+  }) {
+    return WSMessage(
+      type: 'message:delivered',
+      conversationId: conversationId,
+      content: messageId,
+    );
+  }
+
+  /// Mark all messages in conversation as seen
+  factory WSMessage.seen({required String conversationId}) {
+    return WSMessage(type: 'messages:seen', conversationId: conversationId);
+  }
+
+  /// Request current unread count
+  factory WSMessage.getUnread() {
+    return WSMessage(type: 'unread:get', conversationId: '');
   }
 }

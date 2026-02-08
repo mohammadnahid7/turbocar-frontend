@@ -33,19 +33,23 @@ type ConversationParticipant struct {
 	ConversationID    uuid.UUID  `json:"conversation_id" gorm:"type:uuid;primaryKey"`
 	UserID            uuid.UUID  `json:"user_id" gorm:"type:uuid;primaryKey"`
 	LastReadMessageID *uuid.UUID `json:"last_read_message_id" gorm:"type:uuid"`
+	UnreadCount       int        `json:"unread_count" gorm:"default:0"`
 	JoinedAt          time.Time  `json:"joined_at"`
 }
 
 // Message represents a single chat message
 type Message struct {
-	ID             uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	ConversationID uuid.UUID `json:"conversation_id" gorm:"type:uuid;index"`
-	SenderID       uuid.UUID `json:"sender_id" gorm:"type:uuid;index"`
-	Content        string    `json:"content"`
-	MessageType    string    `json:"message_type" gorm:"default:text"` // text, image, file
-	MediaURL       *string   `json:"media_url,omitempty"`
-	IsRead         bool      `json:"is_read" gorm:"default:false"`
-	CreatedAt      time.Time `json:"created_at" gorm:"index"`
+	ID             uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ConversationID uuid.UUID  `json:"conversation_id" gorm:"type:uuid;index"`
+	SenderID       uuid.UUID  `json:"sender_id" gorm:"type:uuid;index"`
+	Content        string     `json:"content"`
+	MessageType    string     `json:"message_type" gorm:"default:text"` // text, image, file
+	MediaURL       *string    `json:"media_url,omitempty"`
+	IsRead         bool       `json:"is_read" gorm:"default:false"`
+	Status         string     `json:"status" gorm:"default:sent"` // sent, delivered, seen
+	DeliveredAt    *time.Time `json:"delivered_at,omitempty"`
+	SeenAt         *time.Time `json:"seen_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at" gorm:"index"`
 }
 
 // UserDevice stores FCM tokens for push notifications

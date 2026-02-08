@@ -2,6 +2,7 @@ package chat
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -95,8 +96,57 @@ func (c *Client) ReadPump() {
 				log.Printf("Failed to mark as read: %v", err)
 			}
 			c.hub.broadcast <- &wsMsg
+
+		case "message:delivered":
+			// Client confirms message was delivered
+			// wsMsg.Content contains the message ID
+			messageID, err := uuid.Parse(wsMsg.Content)
+			if err != nil {
+				log.Printf("Invalid message ID for delivery: %v", err)
+				continue
+			}
+			if err := c.hub.service.MarkMessageDelivered(messageID); err != nil {
+				log.Printf("Failed to mark message as delivered: %v", err)
+				continue
+			}
+			// Notify sender about delivery status
+			c.hub.broadcast <- &wsMsg
+
+		case "messages:seen":
+			// Client marks all messages in conversation as seen
+			affected, err := c.hub.service.MarkConversationSeen(wsMsg.ConversationID, c.UserID)
+			if err != nil {
+				log.Printf("Failed to mark messages as seen: %v", err)
+				continue
+			}
+			if affected > 0 {
+				// Notify sender that messages were seen
+				wsMsg.Content = c.UserID.String() // Include who saw the messages
+				c.hub.broadcast <- &wsMsg
+			}
+			// Send unread update to this user
+			c.sendUnreadUpdate()
+
+		case "unread:get":
+			// Client requests total unread count
+			c.sendUnreadUpdate()
 		}
 	}
+}
+
+// sendUnreadUpdate sends the user's total unread count
+func (c *Client) sendUnreadUpdate() {
+	total, err := c.hub.service.GetTotalUnreadCount(c.UserID)
+	if err != nil {
+		log.Printf("Failed to get total unread count: %v", err)
+		return
+	}
+	unreadMsg := &WSMessage{
+		Type:      "unread:update",
+		Content:   fmt.Sprintf("%d", total),
+		Timestamp: time.Now(),
+	}
+	c.send <- unreadMsg
 }
 
 // WritePump pumps messages from the hub to the WebSocket connection

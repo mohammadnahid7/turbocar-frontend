@@ -11,14 +11,18 @@ class ApiConstants {
   // static const String baseUrl =
   //     'https://turbocar-backend-production.up.railway.app/api';
   // static const String baseUrl = 'http://10.0.2.2:3000/api';
-  // static const String baseUrl = 'http://192.168.0.48:3000/api';
-  static const String baseUrl = 'http://172.30.1.12:8080/api';
+  static const String baseUrl = 'http://192.168.0.37:3000/api';
+  // static const String baseUrl = 'http://172.30.1.12:8080/api';
 
   // WebSocket URL - derived from baseUrl (converts http→ws, https→wss)
   static String get wsBaseUrl {
     final uri = Uri.parse(baseUrl);
     final wsScheme = uri.scheme == 'https' ? 'wss' : 'ws';
-    return '$wsScheme://${uri.host}:${uri.port}/api/chat/ws';
+    // Only include port for local development (non-standard ports like 3000, 8080, etc.)
+    final hasExplicitPort = uri.hasPort && uri.port != 80 && uri.port != 443;
+    final hostPart = hasExplicitPort ? '${uri.host}:${uri.port}' : uri.host;
+    print('Hi Nahid: $hostPart');
+    return '$wsScheme://$hostPart/api/chat/ws';
   }
 
   // API Endpoints

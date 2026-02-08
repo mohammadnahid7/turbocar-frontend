@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turbo_car/core/theme/app_colors.dart';
 import '../../../data/providers/navigation_provider.dart';
+import '../../providers/chat_provider.dart';
 
 class BottomNavBar extends ConsumerWidget {
   const BottomNavBar({super.key});
@@ -118,15 +119,7 @@ class BottomNavBar extends ConsumerWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildNavItem(
-                    context,
-                    ref,
-                    Icons.chat_bubble,
-                    Icons.chat_bubble_outline,
-                    'Chat',
-                    3,
-                    currentIndex,
-                  ),
+                  _buildChatNavItem(context, ref, currentIndex),
                   _buildNavItem(
                     context,
                     ref,
@@ -139,6 +132,48 @@ class BottomNavBar extends ConsumerWidget {
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build chat nav item with unread badge
+  Widget _buildChatNavItem(
+    BuildContext context,
+    WidgetRef ref,
+    int currentIndex,
+  ) {
+    final bool selected = currentIndex == 3;
+    final Color inactive = const Color.fromARGB(109, 255, 255, 255);
+    final Color active = Colors.white;
+    // Badge counts unique chats with unread messages (not total messages)
+    final unreadChatsCount = ref.watch(unreadChatsCountProvider);
+
+    return InkWell(
+      onTap: () {
+        ref.read(navigationProvider.notifier).setIndex(3);
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Badge(
+            // Hide badge when on chat page OR when no unread chats
+            isLabelVisible: unreadChatsCount > 0 && currentIndex != 3,
+            label: Text(
+              unreadChatsCount > 99 ? '99+' : '$unreadChatsCount',
+              style: const TextStyle(fontSize: 10),
+            ),
+            child: Icon(
+              selected ? Icons.chat_bubble : Icons.chat_bubble_outline,
+              size: 22,
+              color: selected ? active : inactive,
+            ),
+          ),
+          Text(
+            'Chat',
+            style: TextStyle(color: selected ? active : inactive, fontSize: 11),
           ),
         ],
       ),

@@ -30,7 +30,18 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     // Connect to WebSocket when page loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _connectWebSocket();
+      // Acknowledge all current chats - badge becomes 0
+      // Only NEW chats with unread after this will show in badge
+      _acknowledgeAllChats();
     });
+  }
+
+  /// Mark all current conversations as "acknowledged" so badge shows 0
+  /// New messages in these chats won't show in badge until user leaves
+  void _acknowledgeAllChats() {
+    final conversations = ref.read(conversationsProvider).valueOrNull ?? [];
+    final allIds = conversations.map((c) => c.id).toSet();
+    ref.read(acknowledgedChatsProvider.notifier).state = allIds;
   }
 
   Future<void> _connectWebSocket() async {
@@ -41,6 +52,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     // Use centralized WebSocket URL from ApiConstants
 
     try {
+      print('Nahid: Connecting to WebSocket...');
       await connectionManager.connectWithStoredToken(ApiConstants.wsBaseUrl);
     } catch (e) {
       // Connection error handled by SocketService reconnection logic
@@ -51,6 +63,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+
+    // Watch stream providers to keep them active for real-time updates
+    // These providers handle unread count and conversation list updates
+    ref.watch(unreadUpdateHandlerProvider);
+    ref.watch(conversationUpdateHandlerProvider);
 
     // If guest or not authenticated, show login prompt
     if (authState.isGuest || !authState.isAuthenticated) {
@@ -260,7 +277,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       title: Text(
         // Show car title if available, otherwise show participant name
         conversation.carTitle ?? otherParticipant?.fullName ?? 'Chat',
-        style: const TextStyle(fontWeight: FontWeight.w600),
+        style: TextStyle(
+          fontWeight: conversation.unreadCount > 0
+              ? FontWeight.w700
+              : FontWeight.w400,
+        ),
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,6 +306,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
+                fontWeight: conversation.unreadCount > 0
+                    ? FontWeight.w700
+                    : FontWeight.w400,
                 color: Theme.of(
                   context,
                 ).colorScheme.onSurface.withValues(alpha: 0.6),
@@ -327,7 +351,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         ],
       ),
       onTap: () {
-        context.push('/chat/${conversation.id}');
+        context.push('/chat/${conversation.id}', extra: conversation);
       },
     );
   }

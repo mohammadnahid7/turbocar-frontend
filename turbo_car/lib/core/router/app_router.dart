@@ -18,6 +18,8 @@ import '../../presentation/pages/profile/contact_us_page.dart';
 import '../../presentation/pages/profile/about_us_page.dart';
 import '../../presentation/pages/profile/profile_settings_page.dart';
 import '../../presentation/pages/chat/chat_room_screen.dart';
+import '../../data/models/conversation_model.dart';
+import '../../data/models/chat_room_data.dart';
 import 'auth_router_notifier.dart';
 import 'route_names.dart';
 
@@ -130,7 +132,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'chatRoom',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
+          final extra = state.extra;
+          // Support both ConversationModel (from chat list) and ChatRoomData (from car details)
+          if (extra is ConversationModel) {
+            return ChatRoomScreen(conversationId: id, conversation: extra);
+          } else if (extra is ChatRoomData) {
+            return ChatRoomScreen(
+              conversationId: extra.isPending ? null : id,
+              chatRoomData: extra,
+            );
+          }
           return ChatRoomScreen(conversationId: id);
+        },
+      ),
+      // Pending chat route (for lazy conversation creation)
+      GoRoute(
+        path: '/chat/new',
+        name: 'chatRoomPending',
+        builder: (context, state) {
+          final chatRoomData = state.extra as ChatRoomData?;
+          return ChatRoomScreen(chatRoomData: chatRoomData);
         },
       ),
       GoRoute(

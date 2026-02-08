@@ -66,6 +66,23 @@ class ChatRepository {
     );
   }
 
+  /// Send delivered acknowledgment
+  void sendDelivered(String conversationId, String messageId) {
+    _socketService.send(
+      WSMessage.delivered(conversationId: conversationId, messageId: messageId),
+    );
+  }
+
+  /// Mark all messages in conversation as seen
+  void sendSeen(String conversationId) {
+    _socketService.send(WSMessage.seen(conversationId: conversationId));
+  }
+
+  /// Request current total unread count
+  void requestUnreadCount() {
+    _socketService.send(WSMessage.getUnread());
+  }
+
   // --- REST API ---
 
   /// Get all conversations
@@ -76,9 +93,16 @@ class ChatRepository {
   /// Start or get existing conversation
   Future<ConversationModel> startConversation(
     List<String> participantIds, {
+    String? carId,
+    String? carTitle,
     Map<String, dynamic>? context,
   }) {
-    return _chatService.startConversation(participantIds, context: context);
+    return _chatService.startConversation(
+      participantIds,
+      carId: carId,
+      carTitle: carTitle,
+      context: context,
+    );
   }
 
   /// Get message history

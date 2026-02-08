@@ -2,6 +2,7 @@ package chat
 
 import (
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -80,6 +81,8 @@ type ConversationListItem struct {
 	ID                  uuid.UUID  `json:"id"`
 	CarID               *uuid.UUID `json:"car_id,omitempty"`
 	CarTitle            string     `json:"car_title,omitempty"`
+	CarImageURL         *string    `json:"car_image_url,omitempty"`
+	CarPrice            *float64   `json:"car_price,omitempty"`
 	LastMessageAt       *string    `json:"last_message_at,omitempty"`
 	UnreadCount         int        `json:"unread_count"`
 	OtherUserID         uuid.UUID  `json:"other_user_id"`
@@ -100,12 +103,12 @@ func (r *Repository) GetUserConversationsOptimized(userID uuid.UUID, limit, offs
 			c.id,
 			c.car_id,
 			c.car_title,
+			-- Get first image from car images array
+			car.images[1] as car_image_url,
+			car.price as car_price,
 			TO_CHAR(c.last_message_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as last_message_at,
-			-- Unread count: messages not sent by this user and not read
-			(SELECT COUNT(*) FROM messages m 
-			 WHERE m.conversation_id = c.id 
-			   AND m.sender_id != $1 
-			   AND m.is_read = false) as unread_count,
+			-- Unread count from participant table (more efficient)
+			COALESCE(cp.unread_count, 0) as unread_count,
 			-- Other participant info
 			other_cp.user_id as other_user_id,
 			u.full_name as other_user_name,
@@ -120,6 +123,7 @@ func (r *Repository) GetUserConversationsOptimized(userID uuid.UUID, limit, offs
 		INNER JOIN conversation_participants other_cp 
 			ON other_cp.conversation_id = c.id AND other_cp.user_id != $1
 		LEFT JOIN users u ON u.id = other_cp.user_id
+		LEFT JOIN cars car ON car.id = c.car_id
 		LEFT JOIN LATERAL (
 			SELECT content, sender_id, created_at
 			FROM messages
@@ -265,4 +269,68 @@ func (r *Repository) GetUserDevices(userID uuid.UUID) ([]UserDevice, error) {
 // DeleteUserDevice removes a device token
 func (r *Repository) DeleteUserDevice(userID uuid.UUID, fcmToken string) error {
 	return r.db.Where("user_id = ? AND fcm_token = ?", userID, fcmToken).Delete(&UserDevice{}).Error
+}
+
+// --- Message Status Operations ---
+
+// UpdateMessageStatus updates the status of a message (sent -> delivered -> seen)
+func (r *Repository) UpdateMessageStatus(messageID uuid.UUID, status string, timestamp *time.Time) error {
+	updates := map[string]interface{}{
+		"status": status,
+	}
+	if status == "delivered" && timestamp != nil {
+		updates["delivered_at"] = timestamp
+	} else if status == "seen" && timestamp != nil {
+		updates["seen_at"] = timestamp
+		updates["is_read"] = true
+	}
+	return r.db.Model(&Message{}).Where("id = ?", messageID).Updates(updates).Error
+}
+
+// BulkUpdateMessagesSeen marks all unread messages in a conversation as seen for a user
+func (r *Repository) BulkUpdateMessagesSeen(conversationID, userID uuid.UUID) (int64, error) {
+	now := time.Now()
+	result := r.db.Model(&Message{}).
+		Where("conversation_id = ? AND sender_id != ? AND status != ?", conversationID, userID, "seen").
+		Updates(map[string]interface{}{
+			"status":  "seen",
+			"seen_at": now,
+			"is_read": true,
+		})
+	return result.RowsAffected, result.Error
+}
+
+// --- Unread Count Operations ---
+
+// IncrementUnreadCount increases the unread count for other participants when a message is sent
+func (r *Repository) IncrementUnreadCount(conversationID, senderID uuid.UUID) error {
+	return r.db.Model(&ConversationParticipant{}).
+		Where("conversation_id = ? AND user_id != ?", conversationID, senderID).
+		Update("unread_count", gorm.Expr("unread_count + 1")).Error
+}
+
+// ResetUnreadCount sets unread count to 0 for a participant (when they view the chat)
+func (r *Repository) ResetUnreadCount(conversationID, userID uuid.UUID) error {
+	return r.db.Model(&ConversationParticipant{}).
+		Where("conversation_id = ? AND user_id = ?", conversationID, userID).
+		Update("unread_count", 0).Error
+}
+
+// GetTotalUnreadCount returns the sum of all unread counts for a user across all conversations
+func (r *Repository) GetTotalUnreadCount(userID uuid.UUID) (int64, error) {
+	var total int64
+	err := r.db.Model(&ConversationParticipant{}).
+		Where("user_id = ?", userID).
+		Select("COALESCE(SUM(unread_count), 0)").
+		Scan(&total).Error
+	return total, err
+}
+
+// GetConversationParticipantIDs returns all participant user IDs for a conversation
+func (r *Repository) GetConversationParticipantIDs(conversationID uuid.UUID) ([]uuid.UUID, error) {
+	var userIDs []uuid.UUID
+	err := r.db.Model(&ConversationParticipant{}).
+		Where("conversation_id = ?", conversationID).
+		Pluck("user_id", &userIDs).Error
+	return userIDs, err
 }

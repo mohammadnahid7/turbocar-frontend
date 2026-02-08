@@ -17,6 +17,7 @@ import '../../../data/models/car_model.dart';
 import '../../providers/chat_provider.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/chat_room_data.dart';
 
 class ShowPostPage extends ConsumerStatefulWidget {
   final String carId;
@@ -613,34 +614,21 @@ class _ShowPostPageState extends ConsumerState<ShowPostPage> {
       return;
     }
 
-    // Show loading
+    // Create ChatRoomData for lazy conversation creation
+    // Conversation will be created when user sends first message
+    final chatRoomData = ChatRoomData.pending(
+      sellerId: car.seller!.id,
+      sellerName: car.seller!.name,
+      sellerAvatar: car.seller!.profilePhoto,
+      carId: car.id,
+      carTitle: car.title,
+      carImageUrl: car.images?.firstOrNull,
+      carPrice: car.price?.toDouble(),
+    );
+
+    // Navigate to chat room with pending conversation
     if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    try {
-      print("Seller ID: ${car.seller!.id}");
-      final conversationsNotifier = ref.read(conversationsProvider.notifier);
-      final conversation = await conversationsNotifier.startConversation(
-        [car.seller!.id],
-        context: {'car_id': car.id, 'car_title': car.title},
-      );
-
-      if (mounted) {
-        Navigator.pop(context); // Close loading dialog
-        context.push('/chat/${conversation.id}');
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to start chat: $e')));
-      }
+      context.push('/chat/new', extra: chatRoomData);
     }
   }
 

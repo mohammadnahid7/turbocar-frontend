@@ -47,6 +47,54 @@ final incomingMessageProvider = StreamProvider<WSMessage>((ref) {
   return repo.messageStream;
 });
 
+/// Badge shows count of conversations with unread messages
+/// Only counts NEW conversations that got unread after user left chat page
+///
+/// Flow:
+/// 1. User enters chat page → acknowledgedChatsProvider = all conversation IDs
+/// 2. User leaves → new messages arrive → badge = count of chats with unread NOT in acknowledged
+/// 3. User re-enters chat page → reset acknowledged
+final acknowledgedChatsProvider = StateProvider<Set<String>>((ref) => {});
+
+/// Computed: Count conversations with unread messages that haven't been acknowledged
+/// Returns 0 when user is on chat page (handled in UI via currentIndex)
+final unreadChatsCountProvider = Provider<int>((ref) {
+  final conversations = ref.watch(conversationsProvider).valueOrNull ?? [];
+  final acknowledged = ref.watch(acknowledgedChatsProvider);
+
+  // Count conversations with unread > 0 that user hasn't acknowledged
+  return conversations
+      .where((c) => c.unreadCount > 0 && !acknowledged.contains(c.id))
+      .length;
+});
+
+/// Legacy: Keep for backend event handling but don't use for badge
+final totalUnreadProvider = StateProvider<int>((ref) => 0);
+
+/// Handles incoming unread:update events (kept for compatibility)
+final unreadUpdateHandlerProvider = StreamProvider<void>((ref) {
+  final repo = ref.watch(chatRepositoryProvider);
+  return repo.messageStream.where((msg) => msg.type == 'unread:update').map((
+    msg,
+  ) {
+    final count = int.tryParse(msg.content ?? '0') ?? 0;
+    ref.read(totalUnreadProvider.notifier).state = count;
+  });
+});
+
+/// Handles incoming conversation:updated events to refresh chat list in real-time
+/// This provider should be watched from a high-level widget to stay active
+final conversationUpdateHandlerProvider = StreamProvider<void>((ref) {
+  final repo = ref.watch(chatRepositoryProvider);
+  return repo.messageStream
+      .where((msg) => msg.type == 'conversation:updated')
+      .map((msg) {
+        // Trigger a refresh of conversation list when any conversation is updated
+        // Use a debounce to avoid excessive refreshes on rapid messages
+        ref.read(conversationsProvider.notifier).handleConversationUpdate(msg);
+      });
+});
+
 // --- Conversation Providers ---
 
 /// List of all conversations
@@ -56,6 +104,9 @@ final conversationsProvider =
     );
 
 class ConversationsNotifier extends AsyncNotifier<List<ConversationModel>> {
+  // Deduplication: Track last processed message per conversation to prevent double updates
+  final Map<String, String> _lastProcessedMessage = {};
+
   @override
   Future<List<ConversationModel>> build() async {
     final repo = ref.watch(chatRepositoryProvider);
@@ -74,15 +125,94 @@ class ConversationsNotifier extends AsyncNotifier<List<ConversationModel>> {
   /// Start a new conversation
   Future<ConversationModel> startConversation(
     List<String> participantIds, {
+    String? carId,
+    String? carTitle,
     Map<String, dynamic>? context,
   }) async {
     final repo = ref.read(chatRepositoryProvider);
     final conversation = await repo.startConversation(
       participantIds,
+      carId: carId,
+      carTitle: carTitle,
       context: context,
     );
     await refresh();
     return conversation;
+  }
+
+  /// Handle real-time conversation update from WebSocket
+  /// Updates local state immediately, then refreshes from server
+  void handleConversationUpdate(WSMessage msg) {
+    // Deduplication: Create unique key from conversation+timestamp+content
+    final messageKey = '${msg.conversationId}_${msg.timestamp}_${msg.content}';
+    if (_lastProcessedMessage[msg.conversationId] == messageKey) {
+      // Skip duplicate event
+      return;
+    }
+    _lastProcessedMessage[msg.conversationId] = messageKey;
+
+    final currentState = state.valueOrNull;
+    if (currentState == null) return;
+
+    // Get current user ID to check if message is from someone else
+    final authState = ref.read(authProvider);
+    final currentUserId = authState.user?.id ?? '';
+    final isFromOtherUser =
+        msg.senderId != null && msg.senderId != currentUserId;
+
+    // Find the updated conversation
+    final index = currentState.indexWhere((c) => c.id == msg.conversationId);
+
+    if (index >= 0) {
+      // Create updated last message
+      final updatedLastMessage = MessageModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        conversationId: msg.conversationId,
+        senderId: msg.senderId ?? '',
+        content: msg.content ?? '',
+        messageType: msg.messageType ?? 'text',
+        createdAt: msg.timestamp ?? DateTime.now().toIso8601String(),
+      );
+
+      // Bug 3 fix: Increment unread count if message is from other user
+      final currentUnread = currentState[index].unreadCount;
+      print('Nahid currentUnread: $currentUnread');
+      final newUnreadCount = isFromOtherUser
+          ? currentUnread + 1
+          : currentUnread;
+
+      // Update conversation with new last message and move to top
+      final updatedConversation = currentState[index].copyWith(
+        lastMessage: updatedLastMessage,
+        updatedAt: msg.timestamp ?? DateTime.now().toIso8601String(),
+        unreadCount: newUnreadCount,
+      );
+
+      // Remove from current position and add to top
+      final newList = [...currentState];
+      newList.removeAt(index);
+      newList.insert(0, updatedConversation);
+
+      state = AsyncData(newList);
+    } else {
+      // New conversation - refresh from server to get full details
+      refresh();
+    }
+  }
+
+  /// Bug 3 fix: Mark a conversation as read (set unread count to 0)
+  /// Called when user enters a chat room and sees messages
+  void markConversationAsRead(String conversationId) {
+    final currentState = state.valueOrNull;
+    if (currentState == null) return;
+
+    final index = currentState.indexWhere((c) => c.id == conversationId);
+    if (index >= 0 && currentState[index].unreadCount > 0) {
+      final updatedConversation = currentState[index].copyWith(unreadCount: 0);
+      final newList = [...currentState];
+      newList[index] = updatedConversation;
+      state = AsyncData(newList);
+    }
   }
 }
 
@@ -164,12 +294,18 @@ class ChatMessagesNotifier extends FamilyAsyncNotifier<ChatRoomState, String> {
         content: wsMessage.content ?? '',
         messageType: wsMessage.messageType ?? 'text',
         mediaUrl: wsMessage.mediaUrl,
+        status: 'delivered', // Received means delivered
         createdAt: wsMessage.timestamp ?? DateTime.now().toIso8601String(),
       );
 
       state = AsyncData(
         currentState.copyWith(messages: [...currentState.messages, newMessage]),
       );
+
+      // Send delivered acknowledgment
+      final repo = ref.read(chatRepositoryProvider);
+      repo.sendDelivered(wsMessage.conversationId, newMessage.id);
+      // NOTE: sendSeen handled by ChatRoomScreen lifecycle, not here
     } else if (wsMessage.type == 'typing') {
       // Show typing indicator
       state = AsyncData(currentState.copyWith(isTyping: true));
@@ -180,21 +316,23 @@ class ChatMessagesNotifier extends FamilyAsyncNotifier<ChatRoomState, String> {
           state = AsyncData(state.value!.copyWith(isTyping: false));
         }
       });
-    } else if (wsMessage.type == 'read_receipt') {
-      // Update read status for messages
+    } else if (wsMessage.type == 'read_receipt' ||
+        wsMessage.type == 'messages:seen') {
+      // Update status to seen for my messages
       final updatedMessages = currentState.messages.map((msg) {
-        if (msg.createdAt.compareTo(wsMessage.content ?? '') <= 0) {
-          return MessageModel(
-            id: msg.id,
-            conversationId: msg.conversationId,
-            senderId: msg.senderId,
-            senderName: msg.senderName,
-            content: msg.content,
-            messageType: msg.messageType,
-            mediaUrl: msg.mediaUrl,
-            isRead: true,
-            createdAt: msg.createdAt,
-          );
+        if (msg.senderId != wsMessage.content && msg.status != 'seen') {
+          return msg.copyWith(status: 'seen', isRead: true);
+        }
+        return msg;
+      }).toList();
+
+      state = AsyncData(currentState.copyWith(messages: updatedMessages));
+    } else if (wsMessage.type == 'message:delivered') {
+      // Update status to delivered for the specific message
+      final messageId = wsMessage.content;
+      final updatedMessages = currentState.messages.map((msg) {
+        if (msg.id == messageId && msg.status == 'sent') {
+          return msg.copyWith(status: 'delivered');
         }
         return msg;
       }).toList();
@@ -296,6 +434,7 @@ class ChatConnectionManager {
     if (token == null || token.isEmpty) return;
 
     final repo = _ref.read(chatRepositoryProvider);
+    print('Nahid: Step 3');
     await repo.connectWebSocket(wsBaseUrl, token);
 
     // Register FCM device token after successful WebSocket connection

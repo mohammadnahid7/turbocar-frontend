@@ -15,6 +15,9 @@ MessageModel _$MessageModelFromJson(Map<String, dynamic> json) => MessageModel(
   messageType: json['message_type'] as String? ?? 'text',
   mediaUrl: json['media_url'] as String?,
   isRead: json['is_read'] as bool? ?? false,
+  status: json['status'] as String? ?? 'sent',
+  deliveredAt: json['delivered_at'] as String?,
+  seenAt: json['seen_at'] as String?,
   createdAt: json['created_at'] as String,
 );
 
@@ -28,6 +31,9 @@ Map<String, dynamic> _$MessageModelToJson(MessageModel instance) =>
       'message_type': instance.messageType,
       'media_url': instance.mediaUrl,
       'is_read': instance.isRead,
+      'status': instance.status,
+      'delivered_at': instance.deliveredAt,
+      'seen_at': instance.seenAt,
       'created_at': instance.createdAt,
     };
 

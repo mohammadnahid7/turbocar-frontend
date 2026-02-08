@@ -35,6 +35,8 @@ type ConversationResponse struct {
 	ID           uuid.UUID             `json:"id"`
 	CarID        *uuid.UUID            `json:"car_id,omitempty"`
 	CarTitle     string                `json:"car_title,omitempty"`
+	CarImageURL  string                `json:"car_image_url,omitempty"`
+	CarPrice     *float64              `json:"car_price,omitempty"`
 	Participants []ParticipantResponse `json:"participants"`
 	LastMessage  *MessageResponse      `json:"last_message,omitempty"`
 	UnreadCount  int                   `json:"unread_count"`
@@ -60,6 +62,9 @@ type MessageResponse struct {
 	MessageType    string    `json:"message_type"`
 	MediaURL       string    `json:"media_url,omitempty"`
 	IsRead         bool      `json:"is_read"`
+	Status         string    `json:"status"`
+	DeliveredAt    string    `json:"delivered_at,omitempty"`
+	SeenAt         string    `json:"seen_at,omitempty"`
 	CreatedAt      string    `json:"created_at"`
 }
 

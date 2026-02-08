@@ -21,13 +21,30 @@ class ChatService {
   /// Start a new conversation with specified users
   Future<ConversationModel> startConversation(
     List<String> participantIds, {
+    String? carId,
+    String? carTitle,
     Map<String, dynamic>? context,
   }) async {
     final data = <String, dynamic>{'participant_ids': participantIds};
+    // Send car data at top level (not nested in context)
+    if (carId != null) {
+      data['car_id'] = carId;
+    }
+    if (carTitle != null) {
+      data['car_title'] = carTitle;
+    }
     if (context != null) {
       data['context'] = context;
     }
+
+    // DEBUG: Log what we're sending
+    print('DEBUG ChatService.startConversation - Request data: $data');
+
     final response = await _dio.post('/chat/conversations', data: data);
+
+    // DEBUG: Log what we received
+    print('DEBUG ChatService.startConversation - Response: ${response.data}');
+
     return ConversationModel.fromJson(response.data);
   }
 
