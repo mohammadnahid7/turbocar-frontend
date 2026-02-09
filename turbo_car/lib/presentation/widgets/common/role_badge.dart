@@ -25,7 +25,7 @@ class RoleBadge extends StatelessWidget {
         ? const Color.fromARGB(255, 228, 171, 0)
         : AppColors.lightSuccess;
 
-    final displayText = isSeller ? 'selling' : 'buying';
+    final displayText = isSeller ? 'Selling' : 'Buying';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

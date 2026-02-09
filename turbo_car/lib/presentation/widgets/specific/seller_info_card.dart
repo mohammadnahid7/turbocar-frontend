@@ -24,12 +24,12 @@ class SellerInfoCard extends StatelessWidget {
     final displayName = sellerName ?? 'Unknown Seller';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      padding: const EdgeInsets.fromLTRB(0, 10, 0, 0),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: theme.cardColor,
             borderRadius: BorderRadius.circular(12),
@@ -46,15 +46,15 @@ class SellerInfoCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Seller',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.6,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
+                    // Text(
+                    //   'Seller',
+                    //   style: theme.textTheme.bodySmall?.copyWith(
+                    //     color: theme.colorScheme.onSurface.withValues(
+                    //       alpha: 0.6,
+                    //     ),
+                    //   ),
+                    // ),
+                    // const SizedBox(height: 2),
                     Text(
                       displayName,
                       style: theme.textTheme.titleMedium?.copyWith(
@@ -86,7 +86,7 @@ class SellerInfoCard extends StatelessWidget {
       return CachedNetworkImage(
         imageUrl: sellerProfilePhotoUrl!,
         imageBuilder: (context, imageProvider) =>
-            CircleAvatar(radius: 24, backgroundImage: imageProvider),
+            CircleAvatar(radius: 20, backgroundImage: imageProvider),
         placeholder: (context, url) =>
             _buildPlaceholderAvatar(context, displayName),
         errorWidget: (context, url, error) =>
@@ -103,12 +103,12 @@ class SellerInfoCard extends StatelessWidget {
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
 
     return CircleAvatar(
-      radius: 24,
+      radius: 20,
       backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
       child: Text(
         initial,
         style: TextStyle(
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: FontWeight.bold,
           color: theme.colorScheme.primary,
         ),

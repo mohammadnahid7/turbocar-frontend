@@ -229,7 +229,7 @@ class _MyCarsPageState extends ConsumerState<MyCarsPage> {
               },
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go(RouteNames.home),
+        onPressed: () => context.go(RouteNames.post),
         child: const Icon(Icons.add),
       ),
     );

@@ -99,6 +99,7 @@ class _ShowPostPageState extends ConsumerState<ShowPostPage> {
 
                 // Price
                 _buildPriceSection(car),
+                const SizedBox(height: 5),
 
                 // Seller Information Card
                 if (car.seller != null)
@@ -108,16 +109,16 @@ class _ShowPostPageState extends ConsumerState<ShowPostPage> {
                   ),
                 const SizedBox(height: 10),
 
+                // Description
+                _buildDescriptionSection(car),
+                const SizedBox(height: 20),
+
                 // Specs Cards (Mileage, Fuel Type)
                 _buildSpecsCards(car),
                 const SizedBox(height: 10),
 
                 // Additional Details Grid
                 _buildDetailsGrid(car),
-                const SizedBox(height: 20),
-
-                // Description
-                _buildDescriptionSection(car),
                 const SizedBox(height: 20),
 
                 // Views and Posted Date
@@ -327,22 +328,36 @@ class _ShowPostPageState extends ConsumerState<ShowPostPage> {
 
   // Specs Cards (Mileage, Fuel Type)
   Widget _buildSpecsCards(CarModel car) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: _buildSpecCard(
-            icon: Icons.speed_outlined,
-            label: 'Mileage',
-            value: '${NumberFormat('#,###').format(car.mileage)} km',
+        Text(
+          'Specifications:',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
+            height: 1.5,
+            fontWeight: FontWeight.w900,
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildSpecCard(
-            icon: Icons.local_gas_station_outlined,
-            label: 'Fuel Type',
-            value: _capitalize(car.fuelType),
-          ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _buildSpecCard(
+                icon: Icons.speed_outlined,
+                label: 'Mileage',
+                value: '${NumberFormat('#,###').format(car.mileage)} km',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildSpecCard(
+                icon: Icons.local_gas_station_outlined,
+                label: 'Fuel Type',
+                value: _capitalize(car.fuelType),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -474,9 +489,19 @@ class _ShowPostPageState extends ConsumerState<ShowPostPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 8),
+        SizedBox(height: 10),
         Text(
-          car.description,
+          'Description:',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
+            height: 1.5,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          car.description +
+              "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
           maxLines: _isDescriptionExpanded ? null : maxLines,
           overflow: _isDescriptionExpanded ? null : TextOverflow.ellipsis,
           style: TextStyle(color: Colors.grey[700], height: 1.5),

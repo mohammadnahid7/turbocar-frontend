@@ -360,7 +360,7 @@ class _ChatPageState extends ConsumerState<ChatPage>
               _tabController.index == 1
                   ? 'Start a conversation by messaging a car seller'
                   : _tabController.index == 2
-                  ? 'Post a car and wait for buyings to contact you'
+                  ? 'Post a car and wait for buyers to contact you'
                   : 'Start a conversation by messaging a car seller',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(

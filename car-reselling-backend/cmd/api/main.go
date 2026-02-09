@@ -198,9 +198,9 @@ func main() {
 
 		cars := api.Group("/cars")
 
-		// Public listing routes
-		cars.GET("", listingHandler.ListListings)
-		cars.GET("/:id", listingHandler.GetListing)
+		// Public listing routes (with optional auth to detect logged-in user for isOwner/isFavorited)
+		cars.GET("", auth.OptionalAuthMiddleware(cfg), listingHandler.ListListings)
+		cars.GET("/:id", auth.OptionalAuthMiddleware(cfg), listingHandler.GetListing)
 		cars.POST("/:id/view", listingHandler.IncrementView)
 
 		// Protected listing routes

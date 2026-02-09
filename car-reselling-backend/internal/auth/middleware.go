@@ -14,6 +14,50 @@ import (
 	"github.com/yourusername/car-reselling-backend/pkg/utils"
 )
 
+// OptionalAuthMiddleware attempts to validate JWT tokens and set user context,
+// but allows the request to proceed even without a valid token.
+// This is useful for public endpoints that need to know if a user is logged in.
+func OptionalAuthMiddleware(cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var token string
+
+		// First, try Authorization header
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" {
+			// Extract token from "Bearer <token>"
+			parts := strings.Split(authHeader, " ")
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				token = parts[1]
+			}
+		}
+
+		// If no header token, try query parameter (for WebSocket connections)
+		if token == "" {
+			token = c.Query("token")
+		}
+
+		// If no token, just continue without setting user context
+		if token == "" {
+			c.Next()
+			return
+		}
+
+		// Validate token (if present)
+		claims, err := utils.ValidateToken(token, cfg.JWTSecret)
+		if err != nil {
+			// Invalid token, but still allow request to proceed (as unauthenticated)
+			c.Next()
+			return
+		}
+
+		// Set user ID in context
+		c.Set("userID", claims.UserID)
+		c.Set("email", claims.Email)
+
+		c.Next()
+	}
+}
+
 // AuthMiddleware validates JWT tokens and sets user context
 func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {

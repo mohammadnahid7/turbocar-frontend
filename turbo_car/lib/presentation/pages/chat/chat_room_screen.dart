@@ -73,14 +73,6 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
     _scrollController.addListener(_onScroll);
     // Mark messages as seen when entering the chat room (only for existing conversations)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // DEBUG: Log the conversation data when entering chat room
-      print('DEBUG ChatRoomScreen:');
-      print('  isPending: $_isPending');
-      print('  conversationId: ${widget.conversationId}');
-      print('  carId: $_carId, carTitle: $_carTitle');
-      print('  carImageUrl: $_carImageUrl, carPrice: $_carPrice');
-      print('  sellerId: $_sellerId, sellerName: $_sellerName');
-
       if (!_isPending) {
         _markMessagesSeen();
         _scrollToBottom();
